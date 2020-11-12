@@ -1,0 +1,17 @@
+{
+	"border": false,
+	"padding": false,
+	"fillBackground": true,
+	"borderColor": {"R":27, "G":95, "B":133 },
+	"borderWidth" : 1.2,
+	"strokeWidth" : 3.2,
+	"strokeColorList" : [
+		{"R":76,  "G":96,  "B":130 },
+		{"R":232, "G":83,  "B":33  },
+		{"R":240, "G":149, "B":31  },
+		{"R":0,   "G":159, "B":129 },
+		{"R":177, "G":150, "B":147 },
+		{"R":8,   "G":8,   "B":8   }],
+	"backgroundColor" : {"R":253, "G":246, "B":227 },
+	"canvasWidth" : 640
+}
