@@ -3,6 +3,9 @@
 
 This is a command line tool for converting SSF to SVG.
 
+![Coelacanth SVG](https://github.com/mindboard/ssf2svg/blob/main/examples/coelacanth.svg)
+
+
 ## about SSF
 
 SSF is Small Sketch native format.  
@@ -29,7 +32,6 @@ Use an examples/style.json in order to customize output style.
 
 There are some ssf and json examples in examples dir.
 
-![Coelacanth SVG](https://github.com/mindboard/ssf2svg/blob/main/examples/coelacanth.svg)
 
 
 ## License
