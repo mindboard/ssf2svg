@@ -5,8 +5,9 @@ This is a command line tool for converting SSF to SVG.
 
 ## about SSF
 
-SSF is small sketch native format.  
-More details :Small Sketch : https://play.google.com/store/apps/details?id=com.mindboardapps.app.smallsketch
+SSF is Small Sketch native format.  
+More details about Small Sketch :  
+https://play.google.com/store/apps/details?id=com.mindboardapps.app.smallsketch
 
 
 ## build
