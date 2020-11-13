@@ -16,9 +16,9 @@ https://play.google.com/store/apps/details?id=com.mindboardapps.app.smallsketch
 ## build
 
 Just do _go build_.  
-Created __ssf2svg__ is executable.
+And then use a executable file __ssf2svg__.
 
-This code was build and test go version go1.14.7 linux/amd64.
+> I am testing this code with go version go1.14.7 linux/amd64.
 
 
 ## usage
@@ -34,7 +34,7 @@ There are some ssf and json examples in examples dir.
 
 
 
-## License
+## license
 
 See the LICENSE.txt file for license rights and limitations (MIT).
 
