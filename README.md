@@ -27,7 +27,7 @@ And then use a executable file __ssf2svg__.
 
 Use an examples/style.json in order to customize output style.
 
-`cat examples/iphone-se.ssf | ./ssf2svg examples/styles.json > iphone-se.svg`
+`cat examples/iphone-se.ssf | ./ssf2svg examples/style.json > iphone-se.svg`
 
 
 There are some ssf and json examples in examples dir.
