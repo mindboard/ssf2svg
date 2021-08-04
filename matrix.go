@@ -84,38 +84,23 @@ func (m *matrix2d) transform(pt point2d) point2d {
 }
 
 func mapPoints(matrix matrix2d, pts []float64) []float64 {
-	var xlist []float64
-	var ylist []float64
-	for i := range pts {
-		if i%2 == 0 {
-			// even
-			x := pts[i]
-			xlist = append(xlist, x)
+	maxLenHalf := len(pts) / 2
+	if maxLenHalf > 0 {
+		newPts := []float64{}
+
+		for i := 0; i < maxLenHalf; i++ {
+			xindex := i * 2
+			yindex := xindex + 1
+			x := pts[xindex]
+			y := pts[yindex]
+
+			newPt := matrix.transform(point2d{x, y})
+			newPts = append(newPts, newPt.x)
+			newPts = append(newPts, newPt.y)
 		}
+		return newPts
 
-		if i%2 == 1 {
-			// odd
-			y := pts[i]
-			ylist = append(ylist, y)
-		}
+	} else {
+		return pts
 	}
-
-	for i := range xlist {
-		x := xlist[i]
-		y := ylist[i]
-
-		newPt := matrix.transform(point2d{x, y})
-		xlist[i] = newPt.x
-		ylist[i] = newPt.y
-	}
-
-	var newPts []float64
-	for i := range xlist {
-		x := xlist[i]
-		y := ylist[i]
-		newPts = append(newPts, x)
-		newPts = append(newPts, y)
-	}
-
-	return newPts
 }

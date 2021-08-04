@@ -33,6 +33,31 @@ func createTransformMatrix(scaleX float64, scaleY float64, oldGroupBounds Rectan
 	return m2.multiply(m1.multiply(m0))
 }
 
+type CallbackLine func(string)
+
+func readLines(callbackLine CallbackLine) error {
+	bs, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return err
+	}
+
+	var buf *bytes.Buffer = bytes.NewBuffer(bs)
+
+	zr, err := gzip.NewReader(buf)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+
+	scanner := bufio.NewScanner(zr)
+	for scanner.Scan() {
+		line := scanner.Text()
+		callbackLine(line)
+	}
+
+	return nil
+}
+
 func Exists(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil
@@ -51,96 +76,119 @@ func main() {
 		style = createDefaultStyle()
 	}
 
-	bs, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := new(Db)
 
-	var buf *bytes.Buffer = bytes.NewBuffer(bs)
-
-	zr, err := gzip.NewReader(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var db Db
-
-	scanner := bufio.NewScanner(zr)
-	for scanner.Scan() {
-		line := scanner.Text()
-
+	callbackLine := func(line string) {
 		cmd0 := new(Cmd)
 		err := json.Unmarshal([]byte(line), cmd0)
-		if err != nil {
-			log.Fatal(err)
-		}
+		if err == nil {
+			if cmd0.Name == "ADD_STROKE" {
+				cmd1 := new(AddStrokeCmd)
+				err := json.Unmarshal([]byte(line), cmd1)
+				if err != nil {
+					log.Fatal(err)
+				}
 
-		if cmd0.Name == "ADD_STROKE" {
-			cmd1 := new(AddStrokeCmd)
-			err := json.Unmarshal([]byte(line), cmd1)
-			if err != nil {
-				log.Fatal(err)
+				strokeObject := new(StrokeObject)
+				strokeObject.PageUuid = "0" // default value
+				strokeObject.Uuid = cmd1.Contents.Uuid
+				strokeObject.Pts = cmd1.Contents.Pts
+				strokeObject.Color = cmd1.Contents.Color
+				strokeObject.GroupUuid = cmd1.Contents.GroupUuid
+				strokeObject.LogicalStrokeWidth = 0 // default value
+
+				db.Add(*strokeObject)
 			}
 
-			strokeObject := new(StrokeObject)
-			strokeObject.PageUuid = "0" // default value
-			strokeObject.Uuid = cmd1.Contents.Uuid
-			strokeObject.Pts = cmd1.Contents.Pts
-			strokeObject.Color = cmd1.Contents.Color
-			strokeObject.GroupUuid = cmd1.Contents.GroupUuid
-			strokeObject.LogicalStrokeWidth = 0 // default value
-
-			db.Add(*strokeObject)
-		}
-
-		if cmd0.Name == "DELETE_STROKES" {
-			cmd1 := new(DeleteStrokesCmd)
-			err := json.Unmarshal([]byte(line), cmd1)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			for i := range cmd1.Contents.Uuids {
-				strokeObjectUuid := cmd1.Contents.Uuids[i]
-				db.Remove(strokeObjectUuid)
-			}
-		}
-
-		if cmd0.Name == "MOVE_STROKES" {
-			cmd1 := new(MoveStrokesCmd)
-			err := json.Unmarshal([]byte(line), cmd1)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			var startX float64
-			var startY float64
-			var stopX float64
-			var stopY float64
-
-			if len(cmd1.Contents.Pts) > 3 {
-				startX = cmd1.Contents.Pts[0]
-				startY = cmd1.Contents.Pts[1]
-				stopX = cmd1.Contents.Pts[2]
-				stopY = cmd1.Contents.Pts[3]
-
-				translateMatrix := matrix2d{
-					1, 0, (stopX - startX),
-					0, 1, (stopY - startY),
-					0, 0, 1}
+			if cmd0.Name == "DELETE_STROKES" {
+				cmd1 := new(DeleteStrokesCmd)
+				err := json.Unmarshal([]byte(line), cmd1)
+				if err != nil {
+					log.Fatal(err)
+				}
 
 				for i := range cmd1.Contents.Uuids {
 					strokeObjectUuid := cmd1.Contents.Uuids[i]
+					db.Remove(strokeObjectUuid)
+				}
+			}
+
+			if cmd0.Name == "MOVE_STROKES" {
+				cmd1 := new(MoveStrokesCmd)
+				err := json.Unmarshal([]byte(line), cmd1)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				var startX float64
+				var startY float64
+				var stopX float64
+				var stopY float64
+
+				if len(cmd1.Contents.Pts) > 3 {
+					startX = cmd1.Contents.Pts[0]
+					startY = cmd1.Contents.Pts[1]
+					stopX = cmd1.Contents.Pts[2]
+					stopY = cmd1.Contents.Pts[3]
+
+					translateMatrix := matrix2d{
+						1, 0, (stopX - startX),
+						0, 1, (stopY - startY),
+						0, 0, 1}
+
+					for i := range cmd1.Contents.Uuids {
+						strokeObjectUuid := cmd1.Contents.Uuids[i]
+						strokeObject, err := db.Get(strokeObjectUuid)
+						if err == nil {
+							db.Remove(strokeObjectUuid)
+
+							myStrokeObject := new(StrokeObject)
+							myStrokeObject.PageUuid = strokeObject.PageUuid
+							myStrokeObject.Uuid = strokeObjectUuid
+							myStrokeObject.Pts = mapPoints(translateMatrix, strokeObject.Pts)
+							myStrokeObject.Color = strokeObject.Color
+							myStrokeObject.GroupUuid = strokeObject.GroupUuid
+							myStrokeObject.LogicalStrokeWidth = strokeObject.LogicalStrokeWidth
+
+							db.Add(*myStrokeObject)
+						}
+					}
+				}
+			}
+
+			if cmd0.Name == "RESIZE_GROUP" {
+				cmd1 := new(ResizeGroupCmd)
+				err := json.Unmarshal([]byte(line), cmd1)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				scaleX := cmd1.Contents.ScaleX
+				scaleY := cmd1.Contents.ScaleY
+
+				strokeObjectSlice := []StrokeObject{}
+				for i := range cmd1.Contents.StrokeUuids {
+					strokeObjectUuid := cmd1.Contents.StrokeUuids[i]
 					strokeObject, err := db.Get(strokeObjectUuid)
 					if err == nil {
-						// 1)
+						strokeObjectSlice = append(strokeObjectSlice, strokeObject)
+					}
+				}
+
+				groupRectangle := toRectangle(strokeObjectSlice)
+
+				transformMatrixValues := createTransformMatrix(scaleX, scaleY, groupRectangle)
+
+				for i := range cmd1.Contents.StrokeUuids {
+					strokeObjectUuid := cmd1.Contents.StrokeUuids[i]
+					strokeObject, err := db.Get(strokeObjectUuid)
+					if err == nil {
 						db.Remove(strokeObjectUuid)
 
-						// 2)
 						myStrokeObject := new(StrokeObject)
 						myStrokeObject.PageUuid = strokeObject.PageUuid
 						myStrokeObject.Uuid = strokeObjectUuid
-						myStrokeObject.Pts = mapPoints(translateMatrix, strokeObject.Pts)
+						myStrokeObject.Pts = mapPoints(transformMatrixValues, strokeObject.Pts)
 						myStrokeObject.Color = strokeObject.Color
 						myStrokeObject.GroupUuid = strokeObject.GroupUuid
 						myStrokeObject.LogicalStrokeWidth = strokeObject.LogicalStrokeWidth
@@ -150,59 +198,11 @@ func main() {
 				}
 			}
 		}
-
-		if cmd0.Name == "RESIZE_GROUP" {
-			cmd1 := new(ResizeGroupCmd)
-			err := json.Unmarshal([]byte(line), cmd1)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			// 1)
-			scaleX := cmd1.Contents.ScaleX
-			scaleY := cmd1.Contents.ScaleY
-
-			strokeObjectSlice := []StrokeObject{}
-			for i := range cmd1.Contents.StrokeUuids {
-				strokeObjectUuid := cmd1.Contents.StrokeUuids[i]
-				strokeObject, err := db.Get(strokeObjectUuid)
-				if err == nil {
-					strokeObjectSlice = append(strokeObjectSlice, strokeObject)
-				}
-			}
-
-			groupRectangle := toRectangle(strokeObjectSlice)
-
-			transformMatrixValues := createTransformMatrix(scaleX, scaleY, groupRectangle)
-
-			// 2)
-			for i := range cmd1.Contents.StrokeUuids {
-				strokeObjectUuid := cmd1.Contents.StrokeUuids[i]
-				strokeObject, err := db.Get(strokeObjectUuid)
-				if err == nil {
-					// 2-1)
-					db.Remove(strokeObjectUuid)
-
-					// 2-2)
-					myStrokeObject := new(StrokeObject)
-					myStrokeObject.PageUuid = strokeObject.PageUuid
-					myStrokeObject.Uuid = strokeObjectUuid
-					myStrokeObject.Pts = mapPoints(transformMatrixValues, strokeObject.Pts)
-					myStrokeObject.Color = strokeObject.Color
-					myStrokeObject.GroupUuid = strokeObject.GroupUuid
-					myStrokeObject.LogicalStrokeWidth = strokeObject.LogicalStrokeWidth
-
-					db.Add(*myStrokeObject)
-				}
-			}
-		}
 	}
 
-	if err := zr.Close(); err != nil {
-		log.Fatal(err)
+	err := readLines(callbackLine)
+	if err == nil {
+		svg := createSvg(db, style)
+		fmt.Fprintln(os.Stdout, svg)
 	}
-
-	svg := createSvg(db, style)
-
-	fmt.Fprintln(os.Stdout, svg)
 }

@@ -6,9 +6,9 @@ import (
 )
 
 type Rectangle struct {
-	left float64
-	top float64
-	right float64
+	left   float64
+	top    float64
+	right  float64
 	bottom float64
 }
 
@@ -93,44 +93,23 @@ func createSvgHeader(bounds Rectangle, style *Style) string {
 }
 
 func createSvgPart(pts []float64, strokeColor int64, style *Style) string {
-	var xlist []float64
-	var ylist []float64
-	for i := range pts {
-		if i%2 == 0 {
-			// even
-			x := pts[i]
-			xlist = append(xlist, x)
-		}
-
-		if i%2 == 1 {
-			// odd
-			y := pts[i]
-			ylist = append(ylist, y)
-		}
-	}
-
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintf("<g stroke=\"%s\" stroke-width=\"%v\" fill=\"none\">", createSvgStrokeColor(strokeColor, style), style.StrokeWidth))
 
-	lastIndex := len(xlist) - 1
+	maxLenHalf := len(pts) / 2
+	lastIndex := maxLenHalf - 1
+	for i := 0; i < maxLenHalf; i++ {
+		xindex := i * 2
+		yindex := xindex + 1
+		x := pts[xindex]
+		y := pts[yindex]
 
-	for i := range xlist {
 		if i == 0 {
-			x := xlist[i]
-			y := ylist[i]
-
 			buffer.WriteString(fmt.Sprintf("<path d=\"M %v %v ", x, y))
-		}
-
-		if i > 0 {
-			x := xlist[i]
-			y := ylist[i]
-
-			if i != lastIndex {
-				buffer.WriteString(fmt.Sprintf("L %v %v ", x, y))
-			} else {
-				buffer.WriteString(fmt.Sprintf("L %v %v\"/>", x, y))
-			}
+		} else if i != lastIndex {
+			buffer.WriteString(fmt.Sprintf("L %v %v ", x, y))
+		} else {
+			buffer.WriteString(fmt.Sprintf("L %v %v\"/>", x, y))
 		}
 	}
 
@@ -139,7 +118,7 @@ func createSvgPart(pts []float64, strokeColor int64, style *Style) string {
 	return buffer.String()
 }
 
-func createSvg(db Db, style *Style) string {
+func createSvg(db *Db, style *Style) string {
 	canvasRectangle := db.toRectangle()
 	canvasLeft := canvasRectangle.left
 	canvasTop := canvasRectangle.top

@@ -16,7 +16,7 @@ type AddStrokeContents struct {
 	Uuid      string //strokeObjectUuid
 	Color     int64
 	GroupUuid string
-	Pts       []float64 // TODO double じゃないの？
+	Pts       []float64
 }
 
 type AddStrokeCmd struct {
@@ -35,7 +35,7 @@ type DeleteStrokesCmd struct {
 // ---
 type MoveStrokesContents struct {
 	Uuids []string
-	Pts   []float64 //transform information // TODO double じゃないの？
+	Pts   []float64 //transform information
 }
 
 type MoveStrokesCmd struct {
@@ -101,52 +101,59 @@ func (db *Db) Get(strokeObjectUuid string) (StrokeObject, error) {
 }
 
 func toRectangle(strokeObjectSlice []StrokeObject) Rectangle {
-	var xlist []float64
-	var ylist []float64
+	maxLen := len(strokeObjectSlice)
+	if maxLen > 0 {
+		xlist := []float64{}
+		ylist := []float64{}
 
-	for i := range strokeObjectSlice {
-		strokeObject := strokeObjectSlice[i]
-		pts := strokeObject.Pts
-		for j := range pts {
-			if j%2 == 0 {
-				// even
-				x := pts[j]
+		for i := range strokeObjectSlice {
+			strokeObject := strokeObjectSlice[i]
+			pts := strokeObject.Pts
+			maxLenHalf := len(pts) / 2
+			for j := 0; j < maxLenHalf; j++ {
+				xindex := j * 2
+				yindex := xindex + 1
+				x := pts[xindex]
+				y := pts[yindex]
 				xlist = append(xlist, x)
-			}
-
-			if j%2 == 1 {
-				// odd
-				y := pts[j]
 				ylist = append(ylist, y)
 			}
 		}
-	}
 
-	left := xlist[0]
-	right := xlist[0]
-	for i := range xlist {
-		x := xlist[i]
-		if x < left {
-			left = x
-		}
-		if right < x {
-			right = x
-		}
-	}
+		if len(xlist) > 0 && len(ylist) > 0 {
+			// find min x as left and max x as right:
+			left := xlist[0]
+			right := xlist[0]
+			for i := range xlist {
+				x := xlist[i]
+				if x < left {
+					left = x
+				}
+				if right < x {
+					right = x
+				}
+			}
 
-	top := ylist[0]
-	bottom := ylist[0]
-	for i := range ylist {
-		y := ylist[i]
-		if y < top {
-			top = y
+			// find min y as top and max y as bottom:
+			top := ylist[0]
+			bottom := ylist[0]
+			for i := range ylist {
+				y := ylist[i]
+				if y < top {
+					top = y
+				}
+				if bottom < y {
+					bottom = y
+				}
+			}
+			return Rectangle{left, top, right, bottom}
+		} else {
+			return Rectangle{0.0, 0.0, 0.0, 0.0}
 		}
-		if bottom < y {
-			bottom = y
-		}
-	}
 
-	return Rectangle{left, top, right, bottom}
+	} else {
+		return Rectangle{0.0, 0.0, 0.0, 0.0}
+	}
 }
 
 func (db *Db) toRectangle() Rectangle {
